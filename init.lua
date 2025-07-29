@@ -238,7 +238,7 @@ minetest.register_on_prejoinplayer(function(name, ip)
 	if e.banned then
 		local date = (e.expires and os.date("%c", e.expires)
 		  or "the end of time")
-		return ("Banned: Expires: %s, Reason: %s"):format(
+		return ("Vous avez été banni de ce serveur : Expiration : %s, Raison : %s"):format(
 		  date, e.reason)
 	end
 end)
