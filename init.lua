@@ -238,7 +238,7 @@ minetest.register_on_prejoinplayer(function(name, ip)
 	if e.banned then
 		local date = (e.expires and os.date("%c", e.expires)
 		  or "the end of time")
-		return ("Vous avez été banni de ce serveur : Expiration : %s, Raison : %s"):format(
+		return ("Banned: Expires: %s, Reason: %s"):format(
 		  date, e.reason)
 	end
 end)
@@ -488,17 +488,6 @@ minetest.register_chatcommand("ban_history", {
 	end,
 })
 
-minetest.register_on_prejoinplayer(function(name, ip)
-	local entry = xban.db.entries[name]
-	if entry and entry.banned and entry.expires and os.time() >= entry.expires then
-		entry.banned = false
-		entry.expires = nil
-		xban.db:write()
-		minetest.log("action", "[BanSystem] " .. name .. " a été automatiquement débanni à la connexion (durée expirée).")
-	end
-end)
-
-
 
 minetest.register_on_shutdown(save_db)
 minetest.after(SAVE_INTERVAL, save_db)
@@ -509,3 +498,21 @@ minetest.after(1, check_temp_bans)
 
 dofile(xban.MP.."/dbimport.lua")
 dofile(xban.MP.."/gui.lua")
+
+minetest.register_on_prejoinplayer(function(name, ip)
+	if not xban or not xban.db or not xban.db.entries then
+		return
+	end
+
+	local entry = xban.db.entries[name]
+	if entry and entry.banned and entry.expires and os.time() >= entry.expires then
+		entry.banned = false
+		entry.expires = nil
+		xban.db:write()
+
+		minetest.log("action", "[BanSystem] " .. name .. " a été automatiquement débanni à la connexion (durée expirée).")
+		
+		-- Optionnel : ajoute l'historique du déban automatique
+		log_ban_history(name, "unban", "Par: Auto (durée expirée à la connexion)")
+	end
+end)
