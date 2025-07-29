@@ -488,6 +488,17 @@ minetest.register_chatcommand("ban_history", {
 	end,
 })
 
+minetest.register_on_prejoinplayer(function(name, ip)
+	local entry = xban.db.entries[name]
+	if entry and entry.banned and entry.expires and os.time() >= entry.expires then
+		entry.banned = false
+		entry.expires = nil
+		xban.db:write()
+		minetest.log("action", "[BanSystem] " .. name .. " a été automatiquement débanni à la connexion (durée expirée).")
+	end
+end)
+
+
 
 minetest.register_on_shutdown(save_db)
 minetest.after(SAVE_INTERVAL, save_db)
