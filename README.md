@@ -1,4 +1,8 @@
+# BanSystem
+BanSystem est basé sur xban2
+Il a pour but d'améliorer les systèmes déjà présents
 
+README xban2 :
 # Extended Ban Mod for Minetest
 
 This mod attempts to be an improvement to Minetest's ban system.
