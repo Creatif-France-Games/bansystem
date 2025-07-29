@@ -218,6 +218,18 @@ local function notify_moderators(msg)
 	end
 end
 
+function format_time(seconds)
+	if seconds >= 86400 then
+		return math.floor(seconds / 86400) .. "j"
+	elseif seconds >= 3600 then
+		return math.floor(seconds / 3600) .. "h"
+	elseif seconds >= 60 then
+		return math.floor(seconds / 60) .. "min"
+	else
+		return seconds .. "s"
+	end
+end
+
 minetest.register_on_prejoinplayer(function(name, ip)
 	local wl = db.whitelist or { }
 	if wl[name] or wl[ip] then return end
