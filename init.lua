@@ -192,6 +192,32 @@ function xban.get_record(player)
 	return record, last_pos
 end
 
+-- 🔧 Historique des bans
+local function log_ban_history(playername, action_type, data)
+	local history_path = minetest.get_worldpath() .. "/ban_history.txt"
+	local log_line = string.format("[%s] %s %s | %s\n",
+		os.date("%Y-%m-%d %H:%M:%S"),
+		string.upper(action_type),
+		playername,
+		data
+	)
+	local f = io.open(history_path, "a")
+	if f then
+		f:write(log_line)
+		f:close()
+	end
+end
+
+-- 📣 Alerte aux modérateurs
+local function notify_moderators(msg)
+	for _, player in ipairs(minetest.get_connected_players()) do
+		local name = player:get_player_name()
+		if minetest.check_player_privs(name, {ban = true}) then
+			minetest.chat_send_player(name, "[BanSystem] " .. msg)
+		end
+	end
+end
+
 minetest.register_on_prejoinplayer(function(name, ip)
 	local wl = db.whitelist or { }
 	if wl[name] or wl[ip] then return end
@@ -223,6 +249,7 @@ minetest.register_on_joinplayer(function(player)
 	e.last_seen = os.time()
 end)
 
+-- Ban def
 minetest.register_chatcommand("xban", {
 	description = "Bannir un joueur",
 	params = "<player> <reason>",
@@ -233,10 +260,15 @@ minetest.register_chatcommand("xban", {
 			return false, "Utilisation : /xban <joueur> <raison>"
 		end
 		local ok, e = xban.ban_player(plname, name, nil, reason)
+		if ok then
+			log_ban_history(plname, "ban", "PERMANENT | Raison: " .. reason .. " | Par: " .. name)
+			notify_moderators(plname .. " a été banni définitivement pour \"" .. reason .. "\" par " .. name)
+		end
 		return ok, ok and ("Banni %s."):format(plname) or e
 	end,
 })
 
+-- Bannissement temporaire
 minetest.register_chatcommand("xtempban", {
 	description = "Bannir un joueur temporairement",
 	params = "<player> <time> <reason>",
@@ -248,28 +280,34 @@ minetest.register_chatcommand("xtempban", {
 		end
 		time = parse_time(time)
 		if time < 60 then
-			return false, "You must ban for at least 60 seconds."
+			return false, "Vous devez bannir pour au moins 60 secondes."
 		end
 		local expires = os.time() + time
 		local ok, e = xban.ban_player(plname, name, expires, reason)
-		return ok, (ok and ("Banned %s until %s."):format(
-				plname, os.date("%c", expires)) or e)
+		if ok then
+			log_ban_history(plname, "ban", format_time(time) .. " | Raison: " .. reason .. " | Par: " .. name)
+			notify_moderators(plname .. " a été temporairement banni pour " .. format_time(time) .. " (raison : " .. reason .. ") par " .. name)
+		end
+		return ok, ok and ("Banni %s jusqu'à %s."):format(plname, os.date("%c", expires)) or e
 	end,
 })
 
+-- Débannissement
 minetest.register_chatcommand("xunban", {
-	description = "XUnBan a player",
+	description = "Débannir un joueur",
 	params = "<player_or_ip>",
 	privs = { ban=true },
 	func = function(name, params)
 		local plname = params:match("%S+")
 		if not plname then
-			minetest.chat_send_player(name,
-			  "Usage: /xunban <player_or_ip>")
-			return
+			return false, "Utilisation : /xunban <joueur ou IP>"
 		end
 		local ok, e = xban.unban_player(plname, name)
-		return ok, ok and ("Unbanned %s."):format(plname) or e
+		if ok then
+			log_ban_history(plname, "unban", "Par: " .. name)
+			notify_moderators(plname .. " a été débanni par " .. name)
+		end
+		return ok, ok and ("Débanni %s."):format(plname) or e
 	end,
 })
 
