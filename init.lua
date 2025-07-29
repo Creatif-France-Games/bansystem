@@ -440,6 +440,43 @@ minetest.register_chatcommand("xban_cleanup", {
 	end,
 })
 
+minetest.register_chatcommand("ban_history", {
+	description = "Voir l'historique des sanctions d'un joueur",
+	params = "<joueur>",
+	privs = { ban = true },
+	func = function(name, param)
+		if param == "" then
+			return false, "Utilisation : /ban_history <joueur>"
+		end
+
+		local path = minetest.get_worldpath() .. "/ban_history.txt"
+		local f = io.open(path, "r")
+		if not f then
+			return false, "Aucun historique trouvé."
+		end
+
+		local lines = {}
+		for line in f:lines() do
+			if line:lower():find(param:lower(), 1, true) then
+				table.insert(lines, line)
+			end
+		end
+		f:close()
+
+		if #lines == 0 then
+			return true, "Aucune sanction trouvée pour " .. param .. "."
+		end
+
+		minetest.chat_send_player(name, "📜 Historique de " .. param .. " :")
+		for _, line in ipairs(lines) do
+			minetest.chat_send_player(name, line)
+		end
+
+		return true
+	end,
+})
+
+
 minetest.register_on_shutdown(save_db)
 minetest.after(SAVE_INTERVAL, save_db)
 load_db()
